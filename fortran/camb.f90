@@ -368,6 +368,7 @@
     use SPkNonLinear, only: TSPkNonLinear
     use DarkEnergyFluid
     use DarkEnergyPPF
+    use DarkEnergyBarotropic
     use Quintessence
     use results
 #ifdef COSMOREC
@@ -556,6 +557,8 @@
         allocate(TDarkEnergyFluid :: P%DarkEnergy)
     else if (DarkEneryModel == 'PPF') then
         allocate(TDarkEnergyPPF :: P%DarkEnergy)
+    else if (DarkEneryModel == 'BAROTROPIC') then
+        allocate(TDarkEnergyBarotropic :: P%DarkEnergy)
     else if (DarkEneryModel == 'AXIONEFFECTIVEFLUID') then
         allocate(TAxionEffectiveFluid :: P%DarkEnergy)
     else if (DarkEneryModel == 'EARLYQUINTESSENCE') then

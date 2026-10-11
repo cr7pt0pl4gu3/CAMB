@@ -16,6 +16,10 @@ Dark Energy models
    :show-inheritance:
    :members:
 
+.. autoclass:: camb.dark_energy.DarkEnergyBarotropic
+   :show-inheritance:
+   :members:
+
 .. autoclass:: camb.dark_energy.Quintessence
    :show-inheritance:
    :members:

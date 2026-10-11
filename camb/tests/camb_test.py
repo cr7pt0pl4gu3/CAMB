@@ -1121,6 +1121,49 @@ class CambTest(unittest.TestCase):
             pars3 = pars2.copy()
             self.assertAlmostEqual(-0.7, pars3.DarkEnergy.w)
 
+    def testDarkEnergyBarotropic(self):
+        # scalar field with constant adiabatic sound speed ca2 (arXiv:1008.1943, arXiv:1206.5194),
+        # compared with the same w(a) in the tabulated-w fluid model
+        def w_barotropic(a, w0, ca2):
+            if ca2 == -1:
+                return -1 + (1 + w0) / (1 - 3 * (1 + w0) * np.log(a))
+            return (1 + ca2) * (1 + w0) / (1 + w0 - (w0 - ca2) * a ** (3 * (1 + ca2))) - 1
+
+        pars = new_def_params()
+        pars.set_cosmology(H0=71)
+        pars.InitPower.set_params(ns=0.965, r=0)
+        a = np.logspace(-5, 0, 1000)
+        for w0, ca2 in [(-0.8, -0.5), (-0.9, -1.0), (-1.2, -1.5)]:
+            pars.DarkEnergy = dark_energy.DarkEnergyBarotropic(w=w0, ca2=ca2)
+            results = camb.get_results(pars)
+            _, w = results.get_dark_energy_rho_w(a)
+            np.testing.assert_allclose(w, w_barotropic(a, w0, ca2), atol=1e-10)
+            C1 = results.get_cmb_power_spectra()
+            pars2 = pars.copy()
+            pars2.DarkEnergy = dark_energy.DarkEnergyFluid()
+            pars2.DarkEnergy.set_w_a_table(a, w_barotropic(a, w0, ca2))
+            C2 = camb.get_results(pars2).get_cmb_power_spectra()
+            for f in ["lens_potential", "lensed_scalar"]:
+                np.testing.assert_allclose(C1[f][2:, 0], C2[f][2:, 0], rtol=1e-4, atol=5e-14)
+        # w0=-1 is a cosmological constant for any ca2; ca2=w0 is constant w
+        pars.set_dark_energy()
+        C1 = camb.get_results(pars).get_cmb_power_spectra()["lensed_scalar"]
+        pars.DarkEnergy = dark_energy.DarkEnergyBarotropic(w=-1, ca2=-0.5)
+        C2 = camb.get_results(pars).get_cmb_power_spectra()["lensed_scalar"]
+        np.testing.assert_allclose(C1[2:, 0], C2[2:, 0], rtol=1e-10)
+        pars.set_dark_energy(w=-1.1)
+        C1 = camb.get_results(pars).get_cmb_power_spectra()["lensed_scalar"]
+        pars.DarkEnergy = dark_energy.DarkEnergyBarotropic(w=-1.1, ca2=-1.1)
+        C2 = camb.get_results(pars).get_cmb_power_spectra()["lensed_scalar"]
+        np.testing.assert_allclose(C1[2:, 0], C2[2:, 0], rtol=1e-6)
+        pars = camb.set_params(H0=67, ombh2=0.022, omch2=0.12, dark_energy_model="barotropic", w=-0.9, ca2=-0.6)
+        self.assertIsInstance(pars.DarkEnergy, dark_energy.DarkEnergyBarotropic)
+        self.assertEqual(pars.DarkEnergy.ca2, -0.6)
+        self.assertIn("ca2", camb.get_valid_numerical_params(dark_energy_model="barotropic"))
+        for kw in [{"w": -0.9, "ca2": 0.1}, {"w": -1.2, "ca2": -1.1}]:
+            with self.assertRaises(CAMBError):
+                dark_energy.DarkEnergyBarotropic(**kw).validate_params()
+
     def testInitialPower(self):
         pars = new_def_params()
         pars.set_cosmology(H0=67)

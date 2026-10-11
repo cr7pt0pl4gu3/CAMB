@@ -879,7 +879,9 @@ class CAMBparams(F2003Class):
         :param use_tabulated_w: whether use interpolated w
         :param wde_a_array: array of scale factors
         :param wde_w_array: array of w(a)
-        :param dark_energy_model: model to use ('fluid' or 'ppf'), default is 'fluid'
+        :param dark_energy_model: model to use ('fluid' or 'ppf'), default is 'fluid'. For other models
+         (e.g. :class:`~.dark_energy.DarkEnergyBarotropic`) use :meth:`set_classes` and then set parameters
+         on the DarkEnergy instance, or use :func:`camb.set_params`.
         :return: self
         """
 

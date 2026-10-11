@@ -150,6 +150,69 @@ class DarkEnergyPPF(DarkEnergyEqnOfState):
 
 
 @fortran_class
+class DarkEnergyBarotropic(DarkEnergyModel):
+    r"""
+    Scalar field dark energy with generalized linear barotropic equation of state :math:`P = c_a^2\rho + C`,
+    i.e. constant adiabatic sound speed :math:`c_a^2 \equiv \dot P/\dot\rho`
+    (`arXiv:1008.1943 <https://arxiv.org/abs/1008.1943>`_, `arXiv:1206.5194 <https://arxiv.org/abs/1206.5194>`_).
+    The model is parameterized by the equation of state today, :math:`w_0 = w(a=1)`, and :math:`c_a^2`, with
+
+    .. math::
+
+        w(a) = \frac{(1+c_a^2)(1+w_0)}{1 + w_0 - (w_0 - c_a^2)\, a^{3(1+c_a^2)}} - 1, \qquad
+        \frac{\rho(a)}{\rho(1)} = \frac{(1+w_0)\, a^{-3(1+c_a^2)} + c_a^2 - w_0}{1+c_a^2},
+
+    so that :math:`dw/d\ln a = 3(1+w)(w - c_a^2)`.
+
+    For :math:`-1 < w_0 \le 0` (quintessence-like; requires :math:`c_a^2 \le 0`), :math:`w` evolves monotonically
+    from :math:`c_a^2` at early times to :math:`w_0` today. For :math:`w_0 < -1` (phantom; requires
+    :math:`c_a^2 \le w_0` for the density to be positive at all earlier times), :math:`w` evolves from :math:`-1` at
+    early times to :math:`w_0` today, tending to :math:`c_a^2` in the future. :math:`w` never crosses :math:`-1`;
+    :math:`c_a^2 = w_0` gives constant :math:`w`, and :math:`w_0 = -1` a cosmological constant.
+
+    Perturbations are those of a fluid with constant rest-frame sound speed :math:`c_s^2` (1 for canonical and
+    phantom scalar fields), as in :class:`DarkEnergyFluid`.
+    """
+
+    _fields_ = (
+        ("w", c_double, "w(a=1)"),
+        ("ca2", c_double, "constant adiabatic sound speed squared (the asymptotic value of w)"),
+        ("cs2", c_double, "fluid rest-frame sound speed squared"),
+    )
+
+    _fortran_class_module_ = "DarkEnergyBarotropic"
+    _fortran_class_name_ = "TDarkEnergyBarotropic"
+    _ini_name = "barotropic"
+
+    def set_params(self, w=-1.0, ca2=-1.0, cs2=1.0):
+        """
+        Set the parameters of the barotropic equation of state.
+
+        :param w: w(a=1)
+        :param ca2: constant adiabatic sound speed squared (the asymptotic value of w)
+        :param cs2: fluid rest-frame sound speed squared
+        """
+        self.w = w
+        self.ca2 = ca2
+        self.cs2 = cs2
+        self.validate_params()
+
+    def validate_params(self) -> None:
+        if abs(1 + self.w) < 1e-6:
+            return  # cosmological constant for any ca2
+        if self.w > -1:
+            if max(self.w, self.ca2) > 0:
+                raise CAMBError("barotropic dark energy model needs w <= 0 and ca2 <= 0, giving w > 0 otherwise")
+        elif self.ca2 > self.w:
+            raise CAMBError("barotropic dark energy model with w < -1 (phantom) requires ca2 <= w")
+
+    def write_ini(self, state) -> None:
+        state.set("dark_energy_model", self._ini_name)
+        state.write_fields(self, names=("w", "ca2"))
+        state.set("cs2_lam", self.cs2)
+
+
+@fortran_class
 class AxionEffectiveFluid(DarkEnergyModel):
     """
     Example implementation of a specific (early) dark energy fluid model
@@ -272,5 +335,5 @@ class EarlyQuintessence(Quintessence):
             self.fde_zc = fde_zc
 
 
-# short names for models that support w/wa
-F2003Class._class_names.update({"fluid": DarkEnergyFluid, "ppf": DarkEnergyPPF})
+# short names for models that support w/wa, and the barotropic (w, ca2) model
+F2003Class._class_names.update({"fluid": DarkEnergyFluid, "ppf": DarkEnergyPPF, "barotropic": DarkEnergyBarotropic})
